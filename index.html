@@ -1,0 +1,56 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>HPAL Mass Balance · BFD</title>
+  <style>
+    body { margin: 0; padding: 0; background-color: #07080d; color: #dce8ff; font-family: sans-serif; }
+    #status { padding: 24px; font-size: 13px; color: #7898c8; }
+    #status.error { color: #ef4444; white-space: pre-wrap; font-family: monospace; }
+  </style>
+  <script crossorigin src="https://cdn.jsdelivr.net/npm/react@18.3.1/umd/react.production.min.js"></script>
+  <script crossorigin src="https://cdn.jsdelivr.net/npm/react-dom@18.3.1/umd/react-dom.production.min.js"></script>
+  <script crossorigin src="https://cdn.jsdelivr.net/npm/@babel/standalone@7.26.4/babel.min.js"></script>
+</head>
+<body>
+  <div id="root"><div id="status">Memuat aplikasi…</div></div>
+
+  <script>
+    // Aplikasi ditulis sebagai file JSX (hpal_bfd_v3.jsx). Browser tidak bisa
+    // menjalankan JSX langsung, jadi file itu diambil, di-compile dengan Babel,
+    // lalu dirender. Untuk memperbarui aplikasi cukup ganti file .jsx-nya.
+    const APP_FILE = "hpal_bfd_v3.jsx";
+
+    function showError(msg) {
+      const root = document.getElementById("root");
+      root.innerHTML = "";
+      const el = document.createElement("div");
+      el.id = "status";
+      el.className = "error";
+      el.textContent = "Gagal memuat " + APP_FILE + ":\n\n" + msg;
+      root.appendChild(el);
+    }
+
+    fetch(APP_FILE, { cache: "no-cache" })
+      .then((res) => {
+        if (!res.ok) throw new Error("HTTP " + res.status);
+        return res.text();
+      })
+      .then((src) => {
+        // Ganti `import { ... } from "react"` dengan objek global React (UMD)
+        // dan ubah `export default function App` menjadi deklarasi biasa.
+        src = src
+          .replace(/^\s*import\s*\{([^}]*)\}\s*from\s*["']react["'];?/m, "const {$1} = React;")
+          .replace(/^\s*import\s+React\b[^;\n]*;?/m, "")
+          .replace(/export\s+default\s+function\s+(\w+)/, "function $1");
+        const code = Babel.transform(src + "\nReactDOM.createRoot(document.getElementById('root')).render(<App />);", {
+          presets: ["react"],
+          filename: APP_FILE,
+        }).code;
+        new Function(code)();
+      })
+      .catch((err) => showError(err && err.stack ? err.stack : String(err)));
+  </script>
+</body>
+</html>
